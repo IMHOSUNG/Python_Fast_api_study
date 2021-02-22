@@ -1,8 +1,8 @@
 from dataclasses import asdict
-from typing import Optional
+from typing import Optional, List, Set  # Optional 명시적은 None 값이 허용되면, 인자가 선택적인지와 상관 없이 Optional을 적용해야 한다.
 from fastapi import FastAPI, Body, status, Query, Path
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field  # 파싱을 도와주는 툴일 뿐, Validation Check을 해주는 라이브러리는 아니다.
+from pydantic import BaseModel, Field, HttpUrl  # 파싱을 도와주는 툴일 뿐, Validation Check을 해주는 라이브러리는 아니다.
 
 # from app.database.conn import db
 # from app.common.config import conf
@@ -75,7 +75,7 @@ async def query_param_read_item(item_id: str, short: bool = False, skip: int = 0
 
 class Item(BaseModel):
     name: str
-    description: Optional[str] = Field( #Field 등록을 통해 Swagger에 설명
+    description: Optional[str] = Field(  # Field 등록을 통해 Swagger에 설명
         None, title="The description of the item", max_length=300
     )
     price: float
@@ -158,7 +158,7 @@ class User(BaseModel):
 async def update_item(
         *,
         item_id: int,
-        item: Item = Body(...,embed=True),
+        item: Item = Body(..., embed=True),
         user: User,
         importance: int = Body(..., gt=0),  # 해당 부분을 통해 Body 값의 Validation 진행
         q: Optional[str] = None
@@ -169,6 +169,38 @@ async def update_item(
     return results
 
 
+# Body - Nested Models
+class Image(BaseModel):
+    url: HttpUrl
+    name: str
+
+
+class Card(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: float
+    tax: Optional[float] = None
+    tags: Set[str] = set()
+    images: Optional[List[Image]] = None
+
+
+# Body/Path/Query/Field
+# https://stackoverflow.com/questions/tagged/fastapi?sort=Newest&uqlId=26120
+# stackoverflow.com -> domain
+# /questions -> Path
+# /tagged -> Path
+# /fastapi -> Path param.
+# sort=Newest -> Query Param.
+# uqlId=26120 -> Query Param.
+@app.put("/items/nested/{item_id}")
+async def putCardImage(*, item_id: int = Path(..., gt=0), item: Card):
+    result = {"item_id": item_id, "item": item}
+    return result
+
+#schema Extra - Example
+
+
+# error
 @app.get("/error")
 async def error():
     content = {"title": "Error is Occured"}
